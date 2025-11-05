@@ -38,3 +38,20 @@ export const updatePasswordSchema = z
     message: "Password baru harus berbeda dengan password saat ini",
     path: ["newPassword"],
   });
+
+export const customerSchema = z.object({
+  name: z.string().min(1, "Nama customer wajib diisi"),
+  email: z.string().email("Email tidak valid").optional().or(z.literal("")),
+  phone: z.string().optional().or(z.literal("")),
+  mobile_phone: z.string().optional().or(z.literal("")), // API spec pakai 'mobile_phone'
+  address: z.string().min(1, "Alamat wajib diisi"),
+
+  // Kode provinsi & kota dari dropdown
+  provinceCode: z.string().min(1, "Provinsi wajib dipilih"),
+  cityCode: z.string().min(1, "Kota wajib dipilih"),
+
+  // Field opsional
+  identityNo: z.string().optional().or(z.literal("")),
+  npwp: z.string().optional().or(z.literal("")),
+  companyType: z.string().min(1, "Tipe perusahaan wajib diisi"), //
+});

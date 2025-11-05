@@ -5,11 +5,9 @@ import LoginPage from "../pages/auth/loginPage";
 import RegisterPage from "../pages/auth/registerPage";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import ProfilePage from "../pages/profile/ProfilePage";
+import SummaryPage from "../pages/summary/SummaryPage";
 
 // --- Komponen Halaman Sederhana (Placeholder) ---
-const SummaryPage = () => (
-  <div className="p-4 bg-white rounded-lg shadow">Konten Halaman Summary</div>
-);
 const CustomerListPage = () => (
   <div className="p-4 bg-white rounded-lg shadow">Konten Halaman Customer</div>
 );
