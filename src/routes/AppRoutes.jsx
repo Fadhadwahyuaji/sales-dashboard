@@ -3,6 +3,21 @@ import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import LoginPage from "../pages/auth/loginPage";
 import RegisterPage from "../pages/auth/registerPage";
+import DashboardLayout from "../components/layout/DashboardLayout";
+import ProfilePage from "../pages/profile/ProfilePage";
+
+// --- Komponen Halaman Sederhana (Placeholder) ---
+const SummaryPage = () => (
+  <div className="p-4 bg-white rounded-lg shadow">Konten Halaman Summary</div>
+);
+const CustomerListPage = () => (
+  <div className="p-4 bg-white rounded-lg shadow">Konten Halaman Customer</div>
+);
+const TransactionListPage = () => (
+  <div className="p-4 bg-white rounded-lg shadow">
+    Konten Halaman Transaction
+  </div>
+);
 
 // --- Komponen Helper ---
 
@@ -30,9 +45,13 @@ const AppRoutes = () => {
         <Route path="/" element={<Navigate to="/login" />} />
       </Route>
 
-      {/* Rute Terproteksi (Protected) */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<div>Dashboard Page</div>} />
+        <Route element={<DashboardLayout />}>
+          <Route path="/dashboard" element={<SummaryPage />} />
+          <Route path="/customers" element={<CustomerListPage />} />
+          <Route path="/transactions" element={<TransactionListPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Route>
       </Route>
 
       {/* Halaman 404 */}

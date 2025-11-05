@@ -19,3 +19,30 @@ export const registerAPI = async (data) => {
   const response = await api.post("/auth/register", data);
   return response.data;
 };
+
+export const updatePasswordAPI = async (data) => {
+  console.log("Original data:", data);
+
+  // Kirim field sesuai yang diterima backend (sesuai Postman)
+  const payload = {
+    currentPassword: data.currentPassword,
+    newPassword: data.newPassword,
+    newPasswordConfirmation: data.newPasswordConfirmation,
+  };
+
+  console.log("Formatted payload:", payload);
+
+  try {
+    const response = await api.put("/auth/password", payload, {
+      headers: { "Content-Type": "application/json" },
+    });
+    return response.data;
+  } catch (error) {
+    console.log("API Error Details:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      headers: error.response?.headers,
+    });
+    throw error;
+  }
+};

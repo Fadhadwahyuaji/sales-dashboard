@@ -15,3 +15,26 @@ export const registerSchema = z.object({
   address: z.string().min(1, "Alamat wajib diisi"),
   password: z.string().min(6, "Password minimal 6 karakter"),
 });
+
+export const updatePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Password saat ini wajib diisi"),
+    newPassword: z
+      .string()
+      .min(6, "Password baru minimal 6 karakter")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        "Password harus mengandung huruf besar, kecil, dan angka"
+      ),
+    newPasswordConfirmation: z
+      .string()
+      .min(1, "Konfirmasi password wajib diisi"),
+  })
+  .refine((data) => data.newPassword === data.newPasswordConfirmation, {
+    message: "Konfirmasi password tidak cocok",
+    path: ["newPasswordConfirmation"],
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: "Password baru harus berbeda dengan password saat ini",
+    path: ["newPassword"],
+  });
