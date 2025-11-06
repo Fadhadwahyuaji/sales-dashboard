@@ -40,18 +40,26 @@ export const updatePasswordSchema = z
   });
 
 export const customerSchema = z.object({
-  name: z.string().min(1, "Nama customer wajib diisi"),
+  name: z
+    .string()
+    .min(1, "Nama customer wajib diisi")
+    .transform((v) => v.trim().toUpperCase()),
+
   email: z.string().email("Email tidak valid").optional().or(z.literal("")),
   phone: z.string().optional().or(z.literal("")),
-  mobile_phone: z.string().optional().or(z.literal("")), // API spec pakai 'mobile_phone'
-  address: z.string().min(1, "Alamat wajib diisi"),
+  mobile_phone: z.string().optional().or(z.literal("")),
+  address: z
+    .string()
+    .min(1, "Alamat wajib diisi")
+    .transform((v) => v.trim()),
 
-  // Kode provinsi & kota dari dropdown
   provinceCode: z.string().min(1, "Provinsi wajib dipilih"),
   cityCode: z.string().min(1, "Kota wajib dipilih"),
 
-  // Field opsional
   identityNo: z.string().optional().or(z.literal("")),
   npwp: z.string().optional().or(z.literal("")),
-  companyType: z.string().min(1, "Tipe perusahaan wajib diisi"), //
+  companyType: z.enum(["person", "company"], {
+    required_error: "Tipe perusahaan wajib diisi",
+    invalid_type_error: "Tipe perusahaan wajib diisi",
+  }),
 });

@@ -6,11 +6,12 @@ import RegisterPage from "../pages/auth/registerPage";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import ProfilePage from "../pages/profile/ProfilePage";
 import SummaryPage from "../pages/summary/SummaryPage";
+import CustomerListPage from "../pages/customer/CustomerListPage";
+import AddCustomerPage from "../pages/customer/AddCustomerPage";
+import EditCustomerPage from "../pages/customer/EditCustomerPage";
+import CustomerDetailPage from "../pages/customer/CustomerDetailPage";
 
 // --- Komponen Halaman Sederhana (Placeholder) ---
-const CustomerListPage = () => (
-  <div className="p-4 bg-white rounded-lg shadow">Konten Halaman Customer</div>
-);
 const TransactionListPage = () => (
   <div className="p-4 bg-white rounded-lg shadow">
     Konten Halaman Transaction
@@ -21,17 +22,29 @@ const TransactionListPage = () => (
 
 // 1. Guest Route (Hanya untuk yang belum login)
 const GuestRoute = () => {
-  const { isAuthenticated } = useAuthStore();
-  return !isAuthenticated ? <Outlet /> : <Navigate to="/dashboard" />;
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const token = useAuthStore((s) => s.token);
+
+  if (!hasHydrated) return null; // atau spinner
+
+  return !(isAuthenticated || !!token) ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/dashboard" />
+  );
 };
 
 // 2. Protected Route (Hanya untuk yang sudah login)
 const ProtectedRoute = () => {
-  const { isAuthenticated } = useAuthStore();
-  return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
-};
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const token = useAuthStore((s) => s.token);
 
-// --- Konfigurasi Rute Utama ---
+  if (!hasHydrated) return null; // cegah redirect sebelum rehydrate
+
+  return isAuthenticated || !!token ? <Outlet /> : <Navigate to="/login" />;
+};
 
 const AppRoutes = () => {
   return (
@@ -47,6 +60,9 @@ const AppRoutes = () => {
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<SummaryPage />} />
           <Route path="/customers" element={<CustomerListPage />} />
+          <Route path="/customers/:code" element={<CustomerDetailPage />} />
+          <Route path="/customers/add" element={<AddCustomerPage />} />
+          <Route path="/customers/edit/:code" element={<EditCustomerPage />} />
           <Route path="/transactions" element={<TransactionListPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
