@@ -1,4 +1,3 @@
-// src/store/authStore.js
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -8,6 +7,7 @@ export const useAuthStore = create(
       token: null,
       user: null,
       isAuthenticated: false,
+      hasHydrated: false,
 
       // Simpan token dan set authenticated berdasar token
       setToken: (token) => {
@@ -27,14 +27,19 @@ export const useAuthStore = create(
       // Dipanggil setelah rehydrate untuk sinkronkan isAuthenticated
       rehydrateAuth: () => {
         const token = get().token;
-        set({ isAuthenticated: !!token });
+        const user = get().user;
+        set({ isAuthenticated: !!(token && user) });
       },
 
       setHasHydrated: (val) => set({ hasHydrated: val }),
     }),
     {
       name: "auth-storage",
-      partialize: (state) => ({ token: state.token }),
+      // Simpan token DAN user
+      partialize: (state) => ({
+        token: state.token,
+        user: state.user,
+      }),
       onRehydrateStorage: () => (state) => {
         // setelah storage ter-rehydrate
         state?.rehydrateAuth?.();

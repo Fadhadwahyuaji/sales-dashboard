@@ -1,18 +1,27 @@
-// src/components/common/StatCard.jsx
 import React from "react";
 
-// Komponen 'kartu' untuk menampilkan statistik ringkas
-const StatCard = ({ title, value, icon: Icon }) => {
+const StatCard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconColor = "bg-blue-100 text-blue-600",
+}) => {
   return (
-    <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
-      {Icon && (
-        <div className="p-3 mr-4 text-blue-600 bg-blue-100 rounded-full">
-          <Icon className="w-6 h-6" />
+    <div className="flex flex-col p-6 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 mb-2 break-words">
+            {value}
+          </p>
+          {subtitle && <div className="text-xs text-gray-500">{subtitle}</div>}
         </div>
-      )}
-      <div>
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <p className="text-2xl font-semibold text-gray-900">{value}</p>
+        {Icon && (
+          <div className={`p-3 rounded-lg ${iconColor} flex-shrink-0`}>
+            <Icon className="w-6 h-6" />
+          </div>
+        )}
       </div>
     </div>
   );

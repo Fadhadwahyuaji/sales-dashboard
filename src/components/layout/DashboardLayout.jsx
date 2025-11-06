@@ -1,25 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 
 const DashboardLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true); // Default true untuk desktop
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Set sidebar default terbuka di desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   const closeSidebar = () => setSidebarOpen(false);
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Sidebar isOpen={sidebarOpen} onClose={closeSidebar} />
-
-      {/* Overlay untuk mobile */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
 
       <div
         className={`
@@ -29,8 +38,10 @@ const DashboardLayout = () => {
       >
         <Navbar onToggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
 
-        <main className="flex-1 p-4 mt-16 overflow-y-auto sm:p-6">
-          <Outlet />
+        <main className="flex-1 p-4 mt-16 overflow-y-auto lg:p-6">
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

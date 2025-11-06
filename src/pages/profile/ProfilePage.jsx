@@ -1,4 +1,3 @@
-// src/pages/profile/ProfilePage.jsx
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -128,9 +127,11 @@ const UpdatePasswordForm = () => {
 
 // Komponen Halaman Utama
 const ProfilePage = () => {
-  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Ambil user dari Zustand dan setUser untuk update
+  const { user: profile, setUser } = useAuthStore();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -141,7 +142,9 @@ const ProfilePage = () => {
 
         // Sesuaikan dengan struktur response API
         const profileData = response?.data ?? response;
-        setProfile(profileData);
+
+        // Update Zustand store dengan data terbaru
+        setUser(profileData);
       } catch (err) {
         console.error("Failed to fetch profile:", err);
         setError(
@@ -155,7 +158,7 @@ const ProfilePage = () => {
     };
 
     fetchProfile();
-  }, []);
+  }, [setUser]);
 
   if (loading) {
     return (

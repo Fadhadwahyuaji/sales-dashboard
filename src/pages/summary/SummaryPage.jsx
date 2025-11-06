@@ -11,12 +11,30 @@ import MonthlyChart from "../../components/common/MonthlyChart";
 import DateRangeFilter from "../../components/common/DateRangeFilter";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import ErrorMessage from "../../components/common/ErrorMessage";
-import { DollarSign, ShoppingCart, Users, Calendar } from "lucide-react";
+import {
+  DollarSign,
+  ShoppingCart,
+  Users,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  Building2,
+  UserCircle,
+} from "lucide-react";
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(value);
+};
+
+const formatCompactCurrency = (value) => {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    notation: "compact",
     minimumFractionDigits: 0,
   }).format(value);
 };
@@ -28,8 +46,8 @@ const SummaryPage = () => {
 
   // State untuk filter tanggal
   const [dateRange, setDateRange] = useState({
-    startDate: format(startOfMonth(new Date()), "yyyy-MM-dd"), // Awal bulan ini
-    endDate: format(new Date(), "yyyy-MM-dd"), // Hari ini
+    startDate: format(startOfMonth(new Date()), "yyyy-MM-dd"),
+    endDate: format(new Date(), "yyyy-MM-dd"),
   });
 
   const fetchSummaryData = async (customDateRange = null) => {
@@ -87,11 +105,15 @@ const SummaryPage = () => {
         },
         monthly: monthlyItems,
         yearly: {
-          total: yearlyData.current?.amount
-            ? parseFloat(yearlyData.current.amount)
-            : 0,
-          percentage: yearlyData.percentage || "0",
-          year: yearlyData.current?.year || year,
+          current: {
+            year: yearlyData.current?.year || year,
+            amount: parseFloat(yearlyData.current?.amount || 0),
+          },
+          previous: {
+            year: yearlyData.previous?.year || parseInt(year) - 1,
+            amount: parseFloat(yearlyData.previous?.amount || 0),
+          },
+          percentage: parseFloat(yearlyData.percentage || 0),
         },
         topCustomers: topCustomersItems,
       };
@@ -111,6 +133,7 @@ const SummaryPage = () => {
 
   useEffect(() => {
     fetchSummaryData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDateRangeChange = (field, value) => {
@@ -157,7 +180,11 @@ const SummaryPage = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner size={48} />;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size={48} />
+      </div>
+    );
   }
 
   if (error) {
@@ -168,8 +195,18 @@ const SummaryPage = () => {
     return <ErrorMessage message="Data tidak tersedia" />;
   }
 
+  const growthIsPositive = data.yearly?.percentage >= 0;
+
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard Summary</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Ringkasan performa penjualan dan transaksi
+        </p>
+      </div>
+
       {/* Filter Section */}
       <DateRangeFilter
         startDate={dateRange.startDate}
@@ -183,19 +220,19 @@ const SummaryPage = () => {
       <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => handlePresetFilter("today")}
-          className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
         >
           Hari Ini
         </button>
         <button
           onClick={() => handlePresetFilter("week")}
-          className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
         >
           7 Hari Terakhir
         </button>
         <button
           onClick={() => handlePresetFilter("month")}
-          className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
         >
           Bulan Ini
         </button>
@@ -204,64 +241,189 @@ const SummaryPage = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title={`Transaksi (${dateRange.startDate} - ${dateRange.endDate})`}
-          value={formatCurrency(data.daily?.total ?? 0)}
+          title="Total Transaksi (Periode)"
+          value={formatCompactCurrency(data.daily?.total ?? 0)}
+          subtitle={`${dateRange.startDate} - ${dateRange.endDate}`}
           icon={DollarSign}
+          iconColor="bg-blue-100 text-blue-600"
         />
+
         <StatCard
-          title="Transaksi Tahun Ini"
-          value={formatCurrency(data.yearly?.total ?? 0)}
+          title={`Transaksi ${data.yearly?.current?.year}`}
+          value={formatCompactCurrency(data.yearly?.current?.amount ?? 0)}
+          subtitle={
+            <div className="flex items-center gap-1">
+              {growthIsPositive ? (
+                <TrendingUp className="w-4 h-4 text-green-600" />
+              ) : (
+                <TrendingDown className="w-4 h-4 text-red-600" />
+              )}
+              <span
+                className={growthIsPositive ? "text-green-600" : "text-red-600"}
+              >
+                {Math.abs(data.yearly?.percentage ?? 0)}% vs{" "}
+                {data.yearly?.previous?.year}
+              </span>
+            </div>
+          }
           icon={Calendar}
+          iconColor="bg-green-100 text-green-600"
         />
+
         <StatCard
-          title={`Jumlah Transaksi (Periode Terpilih)`}
+          title="Jumlah Hari Transaksi"
           value={data.daily?.count ?? 0}
+          subtitle="Dalam periode terpilih"
           icon={ShoppingCart}
+          iconColor="bg-purple-100 text-purple-600"
         />
+
         <StatCard
-          title="Pelanggan Teratas (Periode Terpilih)"
-          value={data.topCustomers?.[0]?.customer?.name ?? "-"}
+          title="Top Customer"
+          value={(() => {
+            const name = data.topCustomers?.[0]?.customer?.name;
+            return name
+              ? name.length > 20
+                ? name.substring(0, 20) + "..."
+                : name
+              : "-";
+          })()}
+          subtitle={formatCompactCurrency(
+            parseFloat(data.topCustomers?.[0]?.amount || 0)
+          )}
           icon={Users}
+          iconColor="bg-orange-100 text-orange-600"
         />
       </div>
 
       {/* Charts and Lists */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="p-4 bg-white rounded-lg shadow-sm lg:col-span-2">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Grafik Transaksi Bulanan ({format(new Date(), "yyyy")})
-          </h3>
+        {/* Chart Section */}
+        <div className="p-6 bg-white rounded-lg shadow-sm lg:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Grafik Transaksi Bulanan
+              </h3>
+              <p className="text-sm text-gray-500">
+                Perbandingan tahun {data.yearly?.current?.year} vs{" "}
+                {data.yearly?.previous?.year}
+              </p>
+            </div>
+          </div>
           <MonthlyChart
             data={Array.isArray(data.monthly) ? data.monthly : []}
           />
         </div>
 
-        <div className="p-4 bg-white rounded-lg shadow-sm lg:col-span-1">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            Top 5 Pelanggan (Periode Terpilih)
-          </h3>
-          <ul className="space-y-3">
+        {/* Top Customers List */}
+        <div className="p-6 bg-white rounded-lg shadow-sm lg:col-span-1">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Top 5 Pelanggan
+              </h3>
+              <p className="text-sm text-gray-500">Periode terpilih</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
             {Array.isArray(data.topCustomers) &&
             data.topCustomers.length > 0 ? (
               data.topCustomers.map((item, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {item.customer?.name || "-"}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {item.customer?.companyType || "person"}
+                <div
+                  key={index}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                      {item.customer?.companyType === "company" ? (
+                        <Building2 className="w-5 h-5 text-blue-600" />
+                      ) : (
+                        <UserCircle className="w-5 h-5 text-blue-600" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {item.customer?.name || "-"}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-gray-500">
+                            {item.customer?.code || "-"}
+                          </span>
+                          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+                            {item.customer?.companyType === "company"
+                              ? "PT"
+                              : "Individu"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-xs text-gray-500">#{index + 1}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold text-blue-600 mt-2">
+                      {formatCurrency(parseFloat(item.amount || 0))}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-gray-800">
-                    {formatCurrency(parseFloat(item.amount || 0))}
-                  </span>
-                </li>
+                </div>
               ))
             ) : (
-              <p className="text-sm text-gray-500">Belum ada data pelanggan.</p>
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                <p className="text-sm text-gray-500">
+                  Belum ada data pelanggan
+                </p>
+              </div>
             )}
-          </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Yearly Comparison Card */}
+      <div className="p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Perbandingan Tahunan
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white p-4 rounded-lg">
+            <p className="text-sm text-gray-500 mb-1">
+              Tahun {data.yearly?.current?.year}
+            </p>
+            <p className="text-xl font-bold text-gray-900">
+              {formatCompactCurrency(data.yearly?.current?.amount ?? 0)}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg">
+            <p className="text-sm text-gray-500 mb-1">
+              Tahun {data.yearly?.previous?.year}
+            </p>
+            <p className="text-xl font-bold text-gray-900">
+              {formatCompactCurrency(data.yearly?.previous?.amount ?? 0)}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg">
+            <p className="text-sm text-gray-500 mb-1">Pertumbuhan</p>
+            <div className="flex items-center gap-2">
+              {growthIsPositive ? (
+                <TrendingUp className="w-6 h-6 text-green-600" />
+              ) : (
+                <TrendingDown className="w-6 h-6 text-red-600" />
+              )}
+              <p
+                className={`text-xl font-bold ${
+                  growthIsPositive ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                {growthIsPositive ? "+" : ""}
+                {data.yearly?.percentage ?? 0}%
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
-// src/routes/AppRoutes.jsx
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { getProfileAPI } from "../api/auth";
+import { useEffect } from "react";
 import LoginPage from "../pages/auth/loginPage";
 import RegisterPage from "../pages/auth/registerPage";
 import DashboardLayout from "../components/layout/DashboardLayout";
@@ -35,6 +36,26 @@ const ProtectedRoute = () => {
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+
+  // Fetch profile jika token ada tapi user kosong
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (token && !user) {
+        try {
+          const profileData = await getProfileAPI();
+          setUser(profileData?.data ?? profileData);
+        } catch (error) {
+          console.error("Failed to fetch profile:", error);
+        }
+      }
+    };
+
+    if (hasHydrated) {
+      fetchProfile();
+    }
+  }, [token, user, setUser, hasHydrated]);
 
   if (!hasHydrated) return null; // cegah redirect sebelum rehydrate
 
@@ -60,7 +81,6 @@ const AppRoutes = () => {
           <Route path="/customers/edit/:code" element={<EditCustomerPage />} />
           <Route path="/transactions" element={<TransactionListPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/transactions" element={<TransactionListPage />} />
           <Route
             path="/transactions/:referenceNo"
             element={<TransactionDetailPage />}

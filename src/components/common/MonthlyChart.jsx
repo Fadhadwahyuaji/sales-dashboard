@@ -9,8 +9,6 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { format } from "date-fns";
-import { id } from "date-fns/locale";
 
 const formatCurrency = (value) => {
   return new Intl.NumberFormat("id-ID", {
@@ -20,27 +18,14 @@ const formatCurrency = (value) => {
   }).format(value);
 };
 
-// Normalisasi label bulan agar aman dipakai di chart
-const formatMonthLabel = (month) => {
-  if (!month) return "-";
-  // YYYY-MM -> jadikan tanggal hari pertama
-  if (/^\d{4}-\d{2}$/.test(month)) {
-    return format(new Date(`${month}-01`), "MMM yyyy", { locale: id });
-  }
-  // YYYY-MM-DD -> format langsung
-  if (/^\d{4}-\d{2}-\d{2}$/.test(month)) {
-    return format(new Date(month), "MMM yyyy", { locale: id });
-  }
-  // Selain itu (mis. "Jan", "Feb") pakai apa adanya
-  return month;
-};
-
 const MonthlyChart = ({ data = [] }) => {
   const safe = Array.isArray(data) ? data : [];
 
   const chartData = safe.map((item) => ({
-    name: formatMonthLabel(item.month),
-    "Total Transaksi": parseFloat(item.current || 0),
+    name: item.month || "-",
+    "Tahun Ini": parseFloat(item.current || 0),
+    "Tahun Lalu": parseFloat(item.previous || 0),
+    growth: parseFloat(item.growth || 0),
   }));
 
   if (chartData.length === 0) {
@@ -50,6 +35,32 @@ const MonthlyChart = ({ data = [] }) => {
       </div>
     );
   }
+
+  const CustomTooltip = ({ active, payload }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+          <p className="font-semibold text-gray-900 mb-2">
+            {payload[0].payload.name}
+          </p>
+          {payload.map((entry, index) => (
+            <p key={index} style={{ color: entry.color }} className="text-sm">
+              {entry.name}: {formatCurrency(entry.value)}
+            </p>
+          ))}
+          <p
+            className={`text-sm font-semibold mt-1 ${
+              payload[0].payload.growth >= 0 ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            Growth: {payload[0].payload.growth >= 0 ? "+" : ""}
+            {payload[0].payload.growth}%
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div className="w-full" style={{ minHeight: "320px", height: "320px" }}>
@@ -66,18 +77,27 @@ const MonthlyChart = ({ data = [] }) => {
                 style: "currency",
                 currency: "IDR",
                 notation: "compact",
+                minimumFractionDigits: 0,
               }).format(value)
             }
             fontSize={12}
           />
-          <Tooltip formatter={(value) => formatCurrency(value)} />
+          <Tooltip content={<CustomTooltip />} />
           <Legend />
           <Line
             type="monotone"
-            dataKey="Total Transaksi"
+            dataKey="Tahun Ini"
             stroke="#2563eb"
             strokeWidth={2}
             activeDot={{ r: 8 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="Tahun Lalu"
+            stroke="#9ca3af"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            activeDot={{ r: 6 }}
           />
         </LineChart>
       </ResponsiveContainer>

@@ -3,25 +3,24 @@ import api from "./axiosInstance";
 
 // === CUSTOMER API ===
 
-// GET /api/v1/customers (dengan pagination & filter) [cite: 60]
+// GET /api/v1/customers (dengan pagination & filter)
 export const getCustomersAPI = (params) => {
-  const page = params.page || 1;
-  const perPage = params.perPage || 10;
+  const queryParams = {};
 
-  const apiParams = {
-    // untuk backend yang mendukung page/perPage
-    page,
-    perPage,
-    // fallback kompatibilitas: backend yang butuh limit/offset
-    limit: perPage,
-    offset: (page - 1) * perPage,
-  };
-
-  if (params.search && params.search.trim()) {
-    apiParams.search = params.search.trim();
+  // Pagination
+  if (params.page) {
+    queryParams.page = params.page;
+  }
+  if (params.perPage) {
+    queryParams.perPage = params.perPage;
   }
 
-  return api.get("/customers/list", { params: apiParams });
+  // Search
+  if (params.search && params.search.trim()) {
+    queryParams.search = params.search.trim();
+  }
+
+  return api.get("/customers/list", { params: queryParams });
 };
 
 // GET /customers/{code}

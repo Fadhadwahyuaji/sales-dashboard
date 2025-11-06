@@ -1,282 +1,365 @@
-// src/pages/customer/CustomerForm.jsx
 import React, { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
 import { customerSchema } from "../../utils/schemas";
 import { getProvincesAPI, getCitiesAPI } from "../../api/customer";
 import Input from "../../components/common/input";
 import Button from "../../components/common/button";
-import LoadingSpinner from "../../components/common/LoadingSpinner";
+import {
+  Building2,
+  User,
+  MapPin,
+  Mail,
+  Phone,
+  CreditCard,
+  FileText,
+  Save,
+  X,
+} from "lucide-react";
 
-// Komponen Select/Dropdown sederhana
-const Select = React.forwardRef(
-  ({ label, id, error, children, ...props }, ref) => (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-        {label}
-      </label>
-      <select
-        id={id}
-        ref={ref}
-        {...props}
-        className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none sm:text-sm ${
-          error
-            ? "border-red-500 focus:ring-red-500 focus:border-red-500"
-            : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-        }`}
-      >
-        {children}
-      </select>
-      {error && <p className="mt-1 text-xs text-red-600">{error.message}</p>}
-    </div>
-  )
-);
-Select.displayName = "Select";
-
-// Form Utama
-const CustomerForm = ({ defaultValues, onFormSubmit, isLoading }) => {
+const CustomerForm = ({
+  defaultValues = {},
+  onFormSubmit,
+  isLoading = false,
+  isEditMode = false,
+}) => {
   const navigate = useNavigate();
   const [provinces, setProvinces] = useState([]);
   const [cities, setCities] = useState([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
 
   const {
     register,
     handleSubmit,
+    control,
     watch,
-    setValue, // <-- add
+    setValue,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(customerSchema),
-    defaultValues: defaultValues || {},
+    defaultValues: {
+      name: defaultValues.name || "",
+      email: defaultValues.email || "",
+      phone: defaultValues.phone || "",
+      mobile_phone: defaultValues.mobile_phone || "",
+      address: defaultValues.address || "",
+      provinceCode: defaultValues.provinceCode || "",
+      cityCode: defaultValues.cityCode || "",
+      identityNo: defaultValues.identityNo || "",
+      npwp: defaultValues.npwp || "",
+      companyType: defaultValues.companyType || "person",
+    },
   });
 
-  // Ambil data provinsi saat komponen dimuat
+  const selectedProvinceCode = watch("provinceCode");
+  const companyType = watch("companyType");
+
+  // Fetch provinces
   useEffect(() => {
-    const loadProvinces = async () => {
+    const fetchProvinces = async () => {
       try {
-        const res = await getProvincesAPI();
-        const provincesData =
-          res.data?.data || res.data?.items || res.data || [];
-        setProvinces(Array.isArray(provincesData) ? provincesData : []);
+        setLoadingProvinces(true);
+        const response = await getProvincesAPI();
+        const provinceList = response?.data?.items || [];
+        setProvinces(provinceList);
       } catch (error) {
-        console.error("Error loading provinces:", error);
-        toast.error(error?.message || "Gagal memuat data provinsi");
-        setProvinces([]);
+        console.error("Error fetching provinces:", error);
       } finally {
-        setIsDataLoading(false);
+        setLoadingProvinces(false);
       }
     };
-    loadProvinces();
+    fetchProvinces();
   }, []);
 
-  // Ambil data kota saat edit (jika sudah ada provinceCode)
+  // Fetch cities when province changes
   useEffect(() => {
-    const loadCities = async (provinceCode) => {
-      if (!provinceCode) return;
-      try {
-        const res = await getCitiesAPI(provinceCode); // <-- pass provinceCode
-        const citiesData = res.data?.data || res.data?.items || res.data || [];
-        setCities(Array.isArray(citiesData) ? citiesData : []);
-      } catch (error) {
-        console.error("Error loading cities:", error);
-        toast.error(error?.message || "Gagal memuat data kota");
-        setCities([]);
-      }
-    };
-
-    if (defaultValues?.provinceCode) {
-      loadCities(defaultValues.provinceCode);
-    }
-  }, [defaultValues]);
-
-  // Pantau perubahan provinceCode
-  const selectedProvince = watch("provinceCode");
-
-  useEffect(() => {
-    const loadCitiesOnChange = async () => {
-      if (!selectedProvince) {
-        setCities([]);
-        setValue("cityCode", ""); // reset pilihan kota
-        return;
-      }
-      try {
-        const res = await getCitiesAPI(selectedProvince); // <-- pass provinceCode
-        const citiesData = res.data?.data || res.data?.items || res.data || [];
-        setCities(Array.isArray(citiesData) ? citiesData : []);
-        setValue("cityCode", ""); // reset ketika provinsi berubah
-      } catch (error) {
-        console.error("Error loading cities on change:", error);
-        toast.error(error?.message || "Gagal memuat data kota");
+    const fetchCities = async () => {
+      if (!selectedProvinceCode) {
         setCities([]);
         setValue("cityCode", "");
+        return;
+      }
+
+      try {
+        setLoadingCities(true);
+        const response = await getCitiesAPI(selectedProvinceCode);
+        const cityList = response?.data?.items || [];
+        setCities(cityList);
+      } catch (error) {
+        console.error("Error fetching cities:", error);
+        setCities([]);
+      } finally {
+        setLoadingCities(false);
       }
     };
-    loadCitiesOnChange();
-  }, [selectedProvince, setValue]);
+    fetchCities();
+  }, [selectedProvinceCode, setValue]);
 
-  if (isDataLoading && !defaultValues)
-    return (
-      <div className="flex items-center justify-center py-12">
-        <LoadingSpinner />
-      </div>
-    );
+  const onSubmit = (data) => {
+    onFormSubmit(data);
+  };
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="max-w-4xl mx-auto">
-      <div className="space-y-6">
-        {/* Informasi Utama */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Informasi Utama
-            </h3>
-            <p className="mt-1 text-sm text-gray-600">Data dasar customer</p>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-1">
-                <Input
-                  id="name"
-                  label="Nama Customer"
-                  placeholder="Masukkan nama customer"
-                  {...register("name")}
-                  error={errors.name}
-                />
-              </div>
-              <div className="md:col-span-1">
-                <Select
-                  id="companyType"
-                  label="Tipe Perusahaan"
-                  {...register("companyType")}
-                  error={errors.companyType}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Company Type Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Building2 className="w-5 h-5 mr-2 text-blue-600" />
+            Tipe Customer
+          </h3>
+        </div>
+        <div className="p-6">
+          <Controller
+            name="companyType"
+            control={control}
+            render={({ field }) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label
+                  className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    field.value === "person"
+                      ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
                 >
-                  <option value="">Pilih Tipe</option>
-                  <option value="person">Person</option>
-                  <option value="company">Company</option>
-                </Select>
+                  <input
+                    type="radio"
+                    value="person"
+                    checked={field.value === "person"}
+                    onChange={() => field.onChange("person")}
+                    className="sr-only"
+                  />
+                  <User className="w-5 h-5 mr-3 text-blue-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">Perorangan</p>
+                    <p className="text-xs text-gray-500">Customer individu</p>
+                  </div>
+                </label>
+
+                <label
+                  className={`relative flex items-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    field.value === "company"
+                      ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    value="company"
+                    checked={field.value === "company"}
+                    onChange={() => field.onChange("company")}
+                    className="sr-only"
+                  />
+                  <Building2 className="w-5 h-5 mr-3 text-blue-600" />
+                  <div>
+                    <p className="font-semibold text-gray-900">Perusahaan</p>
+                    <p className="text-xs text-gray-500">Customer korporat</p>
+                  </div>
+                </label>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Kontak */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Informasi Kontak
-            </h3>
-            <p className="mt-1 text-sm text-gray-600">
-              Data kontak customer (opsional)
+            )}
+          />
+          {errors.companyType && (
+            <p className="mt-2 text-sm text-red-600">
+              {errors.companyType.message}
             </p>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input
-                id="email"
-                label="Email"
-                type="email"
-                placeholder="customer@email.com"
-                {...register("email")}
-                error={errors.email}
-              />
-              <Input
-                id="phone"
-                label="Telepon"
-                placeholder="021-xxxxxxx"
-                {...register("phone")}
-                error={errors.phone}
-              />
-              <Input
-                id="mobile_phone"
-                label="No. HP"
-                placeholder="08xxxxxxxxxx"
-                {...register("mobile_phone")}
-                error={errors.mobile_phone}
-              />
-              <Input
-                id="identityNo"
-                label="No. Identitas (KTP/SIM)"
-                placeholder="xxxxxxxxxxxxxxxx"
-                {...register("identityNo")}
-                error={errors.identityNo}
-              />
-              <Input
-                id="npwp"
-                label="NPWP"
-                placeholder="xx.xxx.xxx.x-xxx.xxx"
-                {...register("npwp")}
-                error={errors.npwp}
-              />
-            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Basic Information */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <FileText className="w-5 h-5 mr-2 text-blue-600" />
+            Informasi Dasar
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 gap-6">
+            <Input
+              label={`Nama ${
+                companyType === "company" ? "Perusahaan" : "Customer"
+              }`}
+              id="name"
+              placeholder={`Masukkan nama ${
+                companyType === "company" ? "perusahaan" : "customer"
+              }`}
+              error={errors.name}
+              {...register("name")}
+            />
+            <Input
+              label="Alamat Lengkap"
+              id="address"
+              placeholder="Masukkan alamat lengkap"
+              error={errors.address}
+              {...register("address")}
+            />
           </div>
         </div>
+      </div>
 
-        {/* Alamat */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Alamat</h3>
-            <p className="mt-1 text-sm text-gray-600">Lokasi customer</p>
+      {/* Contact Information */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Phone className="w-5 h-5 mr-2 text-blue-600" />
+            Informasi Kontak
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Input
+              label="Email"
+              id="email"
+              type="email"
+              placeholder="contoh@email.com"
+              error={errors.email}
+              {...register("email")}
+            />
+            <Input
+              label="Telepon"
+              id="phone"
+              placeholder="021-1234567"
+              error={errors.phone}
+              {...register("phone")}
+            />
+            <Input
+              label="No. HP"
+              id="mobile_phone"
+              placeholder="08123456789"
+              error={errors.mobile_phone}
+              {...register("mobile_phone")}
+              className="sm:col-span-2"
+            />
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Select
-                id="provinceCode"
-                label="Provinsi"
-                {...register("provinceCode")}
-                error={errors.provinceCode}
-              >
-                <option value="">Pilih Provinsi</option>
-                {Array.isArray(provinces) &&
-                  provinces.map((p) => (
-                    <option key={p.code} value={p.code}>
-                      {p.name}
-                    </option>
-                  ))}
-              </Select>
+        </div>
+      </div>
 
-              <Select
-                id="cityCode"
-                label="Kota/Kabupaten"
-                {...register("cityCode")}
-                error={errors.cityCode}
-                disabled={!selectedProvince || cities.length === 0}
+      {/* Location Information */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <MapPin className="w-5 h-5 mr-2 text-blue-600" />
+            Lokasi
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <label
+                htmlFor="provinceCode"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Provinsi
+              </label>
+              <select
+                id="provinceCode"
+                {...register("provinceCode")}
+                disabled={loadingProvinces}
+                className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none sm:text-sm ${
+                  errors.provinceCode
+                    ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                }`}
               >
                 <option value="">
-                  {!selectedProvince
-                    ? "Pilih provinsi terlebih dahulu"
-                    : "Pilih Kota"}
+                  {loadingProvinces ? "Loading..." : "Pilih Provinsi"}
                 </option>
-                {Array.isArray(cities) &&
-                  cities.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                    </option>
-                  ))}
-              </Select>
+                {provinces.map((prov) => (
+                  <option key={prov.code} value={prov.code}>
+                    {prov.name}
+                  </option>
+                ))}
+              </select>
+              {errors.provinceCode && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.provinceCode.message}
+                </p>
+              )}
+            </div>
 
-              <div className="md:col-span-2">
-                <Input
-                  id="address"
-                  label="Alamat Lengkap"
-                  placeholder="Jl. Nama Jalan, No. xx, Kecamatan, ..."
-                  {...register("address")}
-                  error={errors.address}
-                />
-              </div>
+            <div>
+              <label
+                htmlFor="cityCode"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Kota/Kabupaten
+              </label>
+              <select
+                id="cityCode"
+                {...register("cityCode")}
+                disabled={!selectedProvinceCode || loadingCities}
+                className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none sm:text-sm ${
+                  errors.cityCode
+                    ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                }`}
+              >
+                <option value="">
+                  {loadingCities
+                    ? "Loading..."
+                    : selectedProvinceCode
+                    ? "Pilih Kota"
+                    : "Pilih provinsi terlebih dahulu"}
+                </option>
+                {cities.map((city) => (
+                  <option key={city.code} value={city.code}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
+              {errors.cityCode && (
+                <p className="mt-1 text-xs text-red-600">
+                  {errors.cityCode.message}
+                </p>
+              )}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+      {/* Identity Information */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <CreditCard className="w-5 h-5 mr-2 text-blue-600" />
+            Informasi Identitas (Opsional)
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <Input
+              label="No. Identitas (KTP/SIM)"
+              id="identityNo"
+              placeholder="1234567890123456"
+              error={errors.identityNo}
+              {...register("identityNo")}
+            />
+            <Input
+              label="NPWP"
+              id="npwp"
+              placeholder="12.345.678.9-012.345"
+              error={errors.npwp}
+              {...register("npwp")}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Form Actions */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
           <Button
             type="button"
+            variant="outline"
             onClick={() => navigate("/customers")}
-            className="w-full sm:w-auto bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+            disabled={isLoading}
+            className="w-full sm:w-auto"
           >
+            <X className="w-4 h-4 mr-2" />
             Batal
           </Button>
           <Button
@@ -284,7 +367,8 @@ const CustomerForm = ({ defaultValues, onFormSubmit, isLoading }) => {
             isLoading={isLoading}
             className="w-full sm:w-auto"
           >
-            {isLoading ? "Menyimpan..." : "Simpan Data"}
+            <Save className="w-4 h-4 mr-2" />
+            {isEditMode ? "Update Customer" : "Simpan Customer"}
           </Button>
         </div>
       </div>
