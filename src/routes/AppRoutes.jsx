@@ -10,13 +10,8 @@ import CustomerListPage from "../pages/customer/CustomerListPage";
 import AddCustomerPage from "../pages/customer/AddCustomerPage";
 import EditCustomerPage from "../pages/customer/EditCustomerPage";
 import CustomerDetailPage from "../pages/customer/CustomerDetailPage";
-
-// --- Komponen Halaman Sederhana (Placeholder) ---
-const TransactionListPage = () => (
-  <div className="p-4 bg-white rounded-lg shadow">
-    Konten Halaman Transaction
-  </div>
-);
+import TransactionListPage from "../pages/transaction/TransactionListPage";
+import TransactionDetailPage from "../pages/transaction/TransactionDetailPage";
 
 // --- Komponen Helper ---
 
@@ -65,6 +60,11 @@ const AppRoutes = () => {
           <Route path="/customers/edit/:code" element={<EditCustomerPage />} />
           <Route path="/transactions" element={<TransactionListPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/transactions" element={<TransactionListPage />} />
+          <Route
+            path="/transactions/:referenceNo"
+            element={<TransactionDetailPage />}
+          />
         </Route>
       </Route>
 

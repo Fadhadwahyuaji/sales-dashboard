@@ -8,12 +8,39 @@ import { Search, Eye } from "lucide-react";
 import Button from "../../components/common/button";
 import { format } from "date-fns";
 
-// Komponen Pagination (Kita asumsikan sudah ada dari Customer)
+// Komponen Pagination
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  // Tampilkan max 5 halaman
+  let displayPages = pages;
+  if (totalPages > 5) {
+    if (currentPage <= 3) {
+      displayPages = pages.slice(0, 5);
+    } else if (currentPage >= totalPages - 2) {
+      displayPages = pages.slice(totalPages - 5, totalPages);
+    } else {
+      displayPages = pages.slice(currentPage - 3, currentPage + 2);
+    }
+  }
+
   return (
     <div className="flex items-center justify-center space-x-1">
-      {pages.map((page) => (
+      <button
+        onClick={() => onPageChange(1)}
+        disabled={currentPage === 1}
+        className="px-3 py-1 rounded-md bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        First
+      </button>
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-3 py-1 rounded-md bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Prev
+      </button>
+      {displayPages.map((page) => (
         <button
           key={page}
           onClick={() => onPageChange(page)}
@@ -26,6 +53,20 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
           {page}
         </button>
       ))}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 rounded-md bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Next
+      </button>
+      <button
+        onClick={() => onPageChange(totalPages)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 rounded-md bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Last
+      </button>
     </div>
   );
 };
@@ -37,6 +78,17 @@ const formatCurrency = (value) => {
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(value);
+};
+
+// Helper untuk konversi nilai ke number
+const toNumber = (val) => {
+  if (typeof val === "string") {
+    const normalized = val.replace(/\./g, "").replace(/,/g, ".");
+    const n = Number(normalized);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  const n = Number(val);
+  return Number.isNaN(n) ? 0 : n;
 };
 
 const TransactionListPage = () => {
@@ -57,13 +109,35 @@ const TransactionListPage = () => {
   );
   const [endDate, setEndDate] = useState(format(new Date(), "yyyy-MM-dd"));
 
+  // Tambahkan sort agar tidak 422 (required di API)
+  const [sortBy] = useState("created_at");
+  const [sortDirection] = useState("desc");
+
   const fetchTransactions = async () => {
     try {
       setLoading(true);
       setError(null);
-      const params = { page, perPage, search, startDate, endDate };
+
+      // Validasi rentang tanggal
+      if (new Date(startDate) > new Date(endDate)) {
+        setError("Tanggal awal tidak boleh lebih besar dari tanggal akhir.");
+        setLoading(false);
+        return;
+      }
+
+      const params = {
+        page,
+        perPage,
+        search,
+        startDate,
+        endDate,
+        sortBy,
+        sortDirection,
+      };
       const res = await getTransactionsAPI(params);
-      setData(res.data); // Asumsi res.data berisi { data: [...], meta: {...} }
+
+      // API mengembalikan data langsung di root
+      setData(res.data);
     } catch (err) {
       setError(err.response?.data?.message || "Gagal memuat data transaksi.");
     } finally {
@@ -73,6 +147,7 @@ const TransactionListPage = () => {
 
   useEffect(() => {
     fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]); // Panggil ulang jika 'page' berubah
 
   const handleFilterSubmit = (e) => {
@@ -85,12 +160,22 @@ const TransactionListPage = () => {
     setPage(newPage);
   };
 
-  const transactions = data?.data || [];
-  const meta = data?.meta;
+  // Ambil items dari response
+  const transactions = data?.items || [];
+
+  // Metadata pagination
+  const currentPage = data?.currentPage ?? 1;
+  const totalPages = data?.lastPage ?? 1;
+  const total = data?.total ?? 0;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-900">Daftar Transaksi</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Daftar Transaksi
+        </h1>
+        <p className="text-sm text-gray-500">Total: {total} transaksi</p>
+      </div>
 
       {/* Filter & Search Bar */}
       <div className="p-4 bg-white rounded-lg shadow-sm">
@@ -145,7 +230,13 @@ const TransactionListPage = () => {
                     Customer
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Sales
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Total
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Sisa Tagihan
                   </th>
                   <th className="relative px-6 py-3">
                     <span className="sr-only">Detail</span>
@@ -155,23 +246,41 @@ const TransactionListPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {transactions.length > 0 ? (
                   transactions.map((trx) => (
-                    <tr key={trx.reference_no}>
+                    <tr key={trx.referenceNo}>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {format(new Date(trx.created_at), "dd MMM yyyy, HH:mm")}
+                        {trx.createdAt
+                          ? format(
+                              new Date(trx.createdAt),
+                              "dd MMM yyyy, HH:mm"
+                            )
+                          : "-"}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                        {trx.reference_no}
+                        {trx.referenceNo}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {trx.customer_name}
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {trx.customer?.name || "-"}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {trx.customer?.code || "-"}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {formatCurrency(trx.total)}
+                        {trx.sales || "-"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {formatCurrency(toNumber(trx.amountTotal))}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-red-600">
+                        {formatCurrency(toNumber(trx.amountDue))}
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium">
                         <Link
-                          to={`/transactions/${trx.reference_no}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          to={`/transactions/${trx.referenceNo}`}
+                          className="text-blue-600 hover:text-blue-900 inline-flex items-center"
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
@@ -181,7 +290,7 @@ const TransactionListPage = () => {
                 ) : (
                   <tr>
                     <td
-                      colSpan="5"
+                      colSpan="7"
                       className="px-6 py-12 text-center text-sm text-gray-500"
                     >
                       Data tidak ditemukan.
@@ -194,13 +303,19 @@ const TransactionListPage = () => {
         )}
 
         {/* Pagination */}
-        {meta && meta.total_pages > 1 && !loading && (
+        {totalPages > 1 && !loading && (
           <div className="px-4 py-3 bg-white border-t border-gray-200">
-            <Pagination
-              currentPage={meta.current_page}
-              totalPages={meta.total_pages}
-              onPageChange={handlePageChange}
-            />
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-700">
+                Halaman <span className="font-medium">{currentPage}</span> dari{" "}
+                <span className="font-medium">{totalPages}</span>
+              </p>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            </div>
           </div>
         )}
       </div>

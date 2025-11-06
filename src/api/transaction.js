@@ -8,5 +8,5 @@ export const getTransactionsAPI = (params) => {
 
 // GET /api/v1/transactions/{referenceNo} (detail)
 export const getTransactionDetailAPI = (referenceNo) => {
-  return api.get(`/transactions/${referenceNo}`);
+  return api.get(`/transactions/${encodeURIComponent(referenceNo)}`);
 };
